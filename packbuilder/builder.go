@@ -1,9 +1,10 @@
 package packbuilder
 
 import (
+	"strings"
+
 	"github.com/df-mc/dragonfly/server/item/category"
 	"golang.org/x/exp/maps"
-	"strings"
 )
 
 // ComponentBuilder represents a builder that can be used to construct an item components map to be sent to a client.

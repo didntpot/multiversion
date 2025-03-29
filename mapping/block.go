@@ -2,12 +2,13 @@ package mapping
 
 import (
 	"bytes"
+	"sort"
+
 	"github.com/df-mc/worldupgrader/blockupgrader"
-	"github.com/flonja/multiversion/internal"
+	"github.com/didntpot/multiversion/internal"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/segmentio/fasthash/fnv1"
-	"sort"
 )
 
 type Block interface {
@@ -119,7 +120,7 @@ func (m *DefaultBlockMapping) Adjust(entries []protocol.BlockEntry) {
 	adjustedStates := append(m.states, customStates...)
 	sort.SliceStable(adjustedStates, func(i, j int) bool {
 		stateOne, stateTwo := adjustedStates[i], adjustedStates[j]
-		return stateOne.Name == stateTwo.Name && fnv1.HashString64(stateOne.Name) < fnv1.HashString64(stateTwo.Name)
+		return stateOne.Name != stateTwo.Name && fnv1.HashString64(stateOne.Name) < fnv1.HashString64(stateTwo.Name)
 	})
 
 	m.stateRuntimeIDs = make(map[internal.StateHash]uint32, len(adjustedStates))

@@ -1,9 +1,10 @@
 package packbuilder
 
 import (
+	"strings"
+
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"strings"
 )
 
 // Components returns all the components of the given custom item. If the item has no components, a nil map and false

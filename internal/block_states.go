@@ -2,10 +2,11 @@ package internal
 
 import (
 	"fmt"
-	"github.com/df-mc/worldupgrader/blockupgrader"
 	"sort"
 	"strings"
 	"unsafe"
+
+	"github.com/df-mc/worldupgrader/blockupgrader"
 )
 
 // StateHash is a struct that may be used as a map key for block states. It contains the name of the block state

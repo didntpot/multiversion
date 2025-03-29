@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"strings"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/worldupgrader/blockupgrader"
-	"github.com/flonja/multiversion/protocols/latest"
+	"github.com/didntpot/multiversion/mapping"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"strings"
 )
 
 const (
@@ -22,76 +23,40 @@ type (
 	// Encoding is an encoding type used for Chunk encoding. Implementations of this interface are DiskEncoding and
 	// NetworkEncoding, which can be used to encode a Chunk to an intermediate disk or network representation respectively.
 	Encoding interface {
-		encodePalette(buf *bytes.Buffer, p *Palette, e paletteEncoding)
-		decodePalette(buf *bytes.Buffer, blockSize paletteSize, e paletteEncoding) (*Palette, error)
-		network() byte
+		EncodePalette(buf *bytes.Buffer, p *Palette, e PaletteEncoding)
+		DecodePalette(buf *bytes.Buffer, blockSize paletteSize, e PaletteEncoding) (*Palette, error)
+		Network() byte
 	}
-	// paletteEncoding is an encoding type used for Chunk encoding. It is used to encode different types of palettes
+	// PaletteEncoding is an encoding type used for Chunk encoding. It is used to encode different types of palettes
 	// (for example, blocks or biomes) differently.
-	paletteEncoding interface {
-		encode(buf *bytes.Buffer, v uint32)
-		decode(buf *bytes.Buffer) (uint32, error)
+	PaletteEncoding interface {
+		Encode(buf *bytes.Buffer, v uint32)
+		Decode(buf *bytes.Buffer) (uint32, error)
 	}
 	// Encoding is an encoding type used for Chunk encoding. Implementations of this interface are DiskEncoding and
 	// NetworkEncoding, which can be used to encode a Chunk to an intermediate disk or network representation respectively.
 	subChunkVersion interface {
-		encodeHeader(buf *bytes.Buffer, s *SubChunk, r cube.Range, ind int)
+		EncodeHeader(buf *bytes.Buffer, s *SubChunk, r cube.Range, ind int)
 	}
 )
 
 var (
+	// SubChunkVersion9 subChunkVersion9
+	SubChunkVersion9 subChunkVersion9
+	// SubChunkVersion8 subChunkVersion8
+	SubChunkVersion8 subChunkVersion8
+
 	// NetworkEncoding is the Encoding used for sending a Chunk over network. It does not use NBT and writes varints.
 	NetworkEncoding networkEncoding
-	// NetworkPersistentEncoding is the Encoding used for sending a Chunk over network. It uses NBT, unlike NetworkEncoding.
-	NetworkPersistentEncoding networkPersistentEncoding
 	// BiomePaletteEncoding is the paletteEncoding used for encoding a palette of biomes.
 	BiomePaletteEncoding biomePaletteEncoding
-	// BlockPaletteEncoding is the paletteEncoding used for encoding a palette of block states encoded as NBT.
-	BlockPaletteEncoding blockPaletteEncoding
-
-	SubChunkVersion8 subChunkVersion8
-	SubChunkVersion9 subChunkVersion9
-
-	latestBlockMapping = latest.NewBlockMapping()
 )
-
-// biomePaletteEncoding implements the encoding of biome palettes to disk.
-type biomePaletteEncoding struct{}
-
-func (biomePaletteEncoding) encode(buf *bytes.Buffer, v uint32) {
-	_ = binary.Write(buf, binary.LittleEndian, v)
-}
-func (biomePaletteEncoding) decode(buf *bytes.Buffer) (uint32, error) {
-	var v uint32
-	return v, binary.Read(buf, binary.LittleEndian, &v)
-}
-
-// blockPaletteEncoding implements the encoding of block palettes to disk.
-type blockPaletteEncoding struct{}
-
-func (blockPaletteEncoding) encode(buf *bytes.Buffer, v uint32) {
-	// Get the block state registered with the runtime IDs we have in the palette of the block storage
-	// as we need the name and data value to store.
-	state, _ := latestBlockMapping.RuntimeIDToState(v)
-	_ = nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian).Encode(state)
-}
-func (blockPaletteEncoding) decode(buf *bytes.Buffer) (uint32, error) {
-	var e blockupgrader.BlockState
-	if err := nbt.NewDecoderWithEncoding(buf, nbt.LittleEndian).Decode(&e); err != nil {
-		return 0, fmt.Errorf("error decoding block palette entry: %w", err)
-	}
-	v, ok := latestBlockMapping.StateToRuntimeID(e)
-	if !ok {
-		return 0, fmt.Errorf("cannot get runtime ID of block state %v{%+v}", e.Name, e.Properties)
-	}
-	return v, nil
-}
 
 // networkEncoding implements the Chunk encoding for sending over network.
 type networkEncoding struct{}
 
-func (networkEncoding) network() byte { return 1 }
-func (networkEncoding) encodePalette(buf *bytes.Buffer, p *Palette, _ paletteEncoding) {
+func (networkEncoding) Network() byte { return 1 }
+func (networkEncoding) EncodePalette(buf *bytes.Buffer, p *Palette, _ PaletteEncoding) {
 	if p.size != 0 {
 		_ = protocol.WriteVarint32(buf, int32(p.Len()))
 	}
@@ -99,7 +64,7 @@ func (networkEncoding) encodePalette(buf *bytes.Buffer, p *Palette, _ paletteEnc
 		_ = protocol.WriteVarint32(buf, int32(val))
 	}
 }
-func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, _ paletteEncoding) (*Palette, error) {
+func (networkEncoding) DecodePalette(buf *bytes.Buffer, blockSize paletteSize, _ PaletteEncoding) (*Palette, error) {
 	var paletteCount int32 = 1
 	if blockSize != 0 {
 		if err := protocol.Varint32(buf, &paletteCount); err != nil {
@@ -120,22 +85,70 @@ func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, _
 	return &Palette{values: blocks, size: blockSize}, nil
 }
 
-// networkPersistentEncoding implements the Chunk encoding for sending over network with a persistent palette.
-type networkPersistentEncoding struct{}
+// biomePaletteEncoding implements the encoding of biome palettes to disk.
+type biomePaletteEncoding struct{}
 
-func (networkPersistentEncoding) network() byte { return 1 }
-func (networkPersistentEncoding) encodePalette(buf *bytes.Buffer, p *Palette, _ paletteEncoding) {
+func (biomePaletteEncoding) Encode(buf *bytes.Buffer, v uint32) {
+	_ = binary.Write(buf, binary.LittleEndian, v)
+}
+func (biomePaletteEncoding) Decode(buf *bytes.Buffer) (uint32, error) {
+	var v uint32
+	return v, binary.Read(buf, binary.LittleEndian, &v)
+}
+
+// BlockPaletteEncoding implements the encoding of block palettes to disk.
+type BlockPaletteEncoding struct {
+	block   mapping.Block
+	version int32
+}
+
+// NewBlockPaletteEncoding returns a new BlockPaletteEncoding using the block and version passed.
+func NewBlockPaletteEncoding(block mapping.Block, version int32) BlockPaletteEncoding {
+	return BlockPaletteEncoding{block: block, version: version}
+}
+
+func (b BlockPaletteEncoding) Encode(buf *bytes.Buffer, v uint32) {
+	// Get the block state registered with the runtime IDs we have in the palette of the block storage
+	// as we need the name and data value to store.
+	state, _ := b.block.RuntimeIDToState(v)
+	_ = nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian).Encode(blockupgrader.BlockState{Name: state.Name, Properties: state.Properties, Version: b.version})
+}
+func (b BlockPaletteEncoding) Decode(buf *bytes.Buffer) (uint32, error) {
+	var e blockupgrader.BlockState
+	if err := nbt.NewDecoderWithEncoding(buf, nbt.LittleEndian).Decode(&e); err != nil {
+		return 0, fmt.Errorf("error decoding block palette entry: %w", err)
+	}
+	v, ok := b.block.StateToRuntimeID(e)
+	if !ok {
+		return 0, fmt.Errorf("cannot get runtime ID of block state %v{%+v}", e.Name, e.Properties)
+	}
+	return v, nil
+}
+
+// NewNetworkPersistentEncoding returns a new NetworkPersistentEncoding using the block and version passed.
+func NewNetworkPersistentEncoding(block mapping.Block, version int32) NetworkPersistentEncoding {
+	return NetworkPersistentEncoding{block: block, version: version}
+}
+
+// NetworkPersistentEncoding implements the Chunk encoding for sending over network with a persistent palette.
+type NetworkPersistentEncoding struct {
+	block   mapping.Block
+	version int32
+}
+
+func (n NetworkPersistentEncoding) Network() byte { return 1 }
+func (n NetworkPersistentEncoding) EncodePalette(buf *bytes.Buffer, p *Palette, _ PaletteEncoding) {
 	if p.size != 0 {
 		_ = protocol.WriteVarint32(buf, int32(p.Len()))
 	}
 
 	enc := nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian)
 	for _, val := range p.values {
-		state, _ := latestBlockMapping.RuntimeIDToState(val)
-		_ = enc.Encode(blockupgrader.BlockState{Name: strings.TrimPrefix("minecraft:", state.Name), Properties: state.Properties, Version: state.Version})
+		state, _ := n.block.RuntimeIDToState(val)
+		_ = enc.Encode(blockupgrader.BlockState{Name: strings.TrimPrefix("minecraft:", state.Name), Properties: state.Properties, Version: n.version})
 	}
 }
-func (networkPersistentEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, _ paletteEncoding) (*Palette, error) {
+func (n NetworkPersistentEncoding) DecodePalette(buf *bytes.Buffer, blockSize paletteSize, _ PaletteEncoding) (*Palette, error) {
 	var paletteCount int32 = 1
 	if blockSize != 0 {
 		err := protocol.Varint32(buf, &paletteCount)
@@ -158,7 +171,7 @@ func (networkPersistentEncoding) decodePalette(buf *bytes.Buffer, blockSize pale
 	var ok bool
 	palette, temp := newPalette(blockSize, make([]uint32, paletteCount)), uint32(0)
 	for i, b := range blocks {
-		temp, ok = latestBlockMapping.StateToRuntimeID(blockupgrader.BlockState{Name: "minecraft:" + b.Name, Properties: b.Properties, Version: b.Version})
+		temp, ok = n.block.StateToRuntimeID(blockupgrader.BlockState{Name: "minecraft:" + b.Name, Properties: b.Properties, Version: n.version})
 		if !ok {
 			return nil, fmt.Errorf("cannot get runtime ID of block state %v{%+v}", b.Name, b.Properties)
 		}
@@ -169,12 +182,12 @@ func (networkPersistentEncoding) decodePalette(buf *bytes.Buffer, blockSize pale
 
 type subChunkVersion8 struct{}
 
-func (subChunkVersion8) encodeHeader(buf *bytes.Buffer, s *SubChunk, _ cube.Range, _ int) {
+func (subChunkVersion8) EncodeHeader(buf *bytes.Buffer, s *SubChunk, _ cube.Range, _ int) {
 	_, _ = buf.Write([]byte{8, byte(len(s.storages))})
 }
 
 type subChunkVersion9 struct{}
 
-func (subChunkVersion9) encodeHeader(buf *bytes.Buffer, s *SubChunk, r cube.Range, ind int) {
+func (subChunkVersion9) EncodeHeader(buf *bytes.Buffer, s *SubChunk, r cube.Range, ind int) {
 	_, _ = buf.Write([]byte{SubChunkVersion, byte(len(s.storages)), uint8(ind + (r[0] >> 4))})
 }

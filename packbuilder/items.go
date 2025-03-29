@@ -3,14 +3,15 @@ package packbuilder
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/df-mc/dragonfly/server/world"
-	"golang.org/x/image/colornames"
 	"image"
 	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
 	_ "unsafe" // Imported for compiler directives.
+
+	"github.com/df-mc/dragonfly/server/world"
+	"golang.org/x/image/colornames"
 )
 
 // buildItems builds all the item-related files for the resource pack. This includes textures, language

@@ -2,11 +2,10 @@ package translator
 
 import (
 	"fmt"
+
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/worldupgrader/itemupgrader"
-	"github.com/flonja/multiversion/internal/item"
-	"github.com/flonja/multiversion/mapping"
-	"github.com/flonja/multiversion/packbuilder"
+	"github.com/didntpot/multiversion/internal/item"
+	"github.com/didntpot/multiversion/mapping"
 	"github.com/samber/lo"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -37,7 +36,7 @@ type ItemTranslator interface {
 	UpgradeItemDescriptorCount(input protocol.ItemDescriptorCount) protocol.ItemDescriptorCount
 	UpgradeItemPackets(pks []packet.Packet, conn *minecraft.Conn) []packet.Packet
 	// Register registers a custom item entry.
-	Register(item world.CustomItem, replacement itemupgrader.ItemMeta)
+	Register(item world.CustomItem, replacement string)
 	// CustomItems lists all custom items used as substitutes, with the runtime id as the key
 	CustomItems() map[int32]world.CustomItem
 }
@@ -71,21 +70,21 @@ func (t *DefaultItemTranslator) DowngradeItemType(input protocol.ItemType) proto
 
 	var ok bool
 	if networkID, ok = t.originalToCustom[input.NetworkID]; !ok {
-		itemMeta, ok := t.latest.ItemRuntimeIDToName(input.NetworkID)
-		if !ok {
-			return protocol.ItemType{
-				NetworkID: t.mapping.Air(),
-			}
-		}
-		itemMeta.Meta = int16(metadata)
-		itemMeta = itemupgrader.Upgrade(itemMeta)
+		name, _ := t.latest.ItemRuntimeIDToName(input.NetworkID)
+		i := item.Downgrade(item.Item{
+			Name:     name,
+			Metadata: input.MetadataValue,
+			Version:  t.latest.ItemVersion(),
+		}, t.mapping.ItemVersion())
+		metadata = i.Metadata
 
-		networkID, ok = t.mapping.ItemNameToRuntimeID(itemMeta)
+		if i.Name == "minecraft:netherstar" {
+			i.Name = "minecraft:nether_star"
+		}
+
+		networkID, ok = t.mapping.ItemNameToRuntimeID(i.Name)
 		if !ok {
-			networkID, _ = t.mapping.ItemNameToRuntimeID(itemupgrader.ItemMeta{Name: "minecraft:info_update"})
-			metadata = 0
-		} else {
-			metadata = uint32(itemMeta.Meta)
+			networkID, _ = t.mapping.ItemNameToRuntimeID("minecraft:info_update")
 		}
 	}
 
@@ -103,10 +102,10 @@ func (t *DefaultItemTranslator) DowngradeItemStack(input protocol.ItemStack) pro
 
 	blockRuntimeId := uint32(0)
 	if input.NetworkID != t.mapping.Air() {
-		itemMeta, _ := t.mapping.ItemRuntimeIDToName(input.NetworkID)
-		itemMeta.Meta = int16(input.MetadataValue)
-		if latestBlockState, ok := item.BlockStateFromItem(itemMeta); ok {
-			if blockRuntimeId, ok = t.blockMapping.StateToRuntimeID(latestBlockState); !ok {
+		name, _ := t.mapping.ItemRuntimeIDToName(input.NetworkID)
+		if latestBlockState, ok := item.BlockStateFromItemName(name, input.MetadataValue); ok {
+			var found bool
+			if blockRuntimeId, found = t.blockMapping.StateToRuntimeID(latestBlockState); !found {
 				blockRuntimeId = t.blockMapping.Air()
 			}
 		}
@@ -123,6 +122,9 @@ func (t *DefaultItemTranslator) DowngradeItemStack(input protocol.ItemStack) pro
 }
 
 func (t *DefaultItemTranslator) DowngradeItemInstance(input protocol.ItemInstance) protocol.ItemInstance {
+	if t.latest == t.mapping {
+		return input
+	}
 	input.Stack = t.DowngradeItemStack(input.Stack)
 	return input
 }
@@ -143,7 +145,7 @@ func (t *DefaultItemTranslator) DowngradeItemDescriptor(input protocol.ItemDescr
 	case *protocol.ItemTagItemDescriptor:
 		return input
 	case *protocol.DeferredItemDescriptor:
-		rid, ok := t.latest.ItemNameToRuntimeID(itemupgrader.ItemMeta{Name: descriptor.Name})
+		rid, ok := t.latest.ItemNameToRuntimeID(descriptor.Name)
 		descriptor.Name = "minecraft:air"
 		if !ok {
 			descriptor.MetadataValue = 0
@@ -151,23 +153,19 @@ func (t *DefaultItemTranslator) DowngradeItemDescriptor(input protocol.ItemDescr
 		}
 		itemType := t.DowngradeItemType(protocol.ItemType{NetworkID: rid, MetadataValue: uint32(descriptor.MetadataValue)})
 		descriptor.MetadataValue = int16(itemType.MetadataValue)
-		if itemMeta, ok := t.mapping.ItemRuntimeIDToName(itemType.NetworkID); ok {
-			itemMeta.Meta = descriptor.MetadataValue
-			itemMeta = itemupgrader.Upgrade(itemMeta)
-
-			descriptor.Name = itemMeta.Name
-			descriptor.MetadataValue = itemMeta.Meta
+		if name, ok := t.mapping.ItemRuntimeIDToName(itemType.NetworkID); ok {
+			descriptor.Name = name
 		}
 		return descriptor
 	case *protocol.ComplexAliasItemDescriptor:
-		rid, ok := t.latest.ItemNameToRuntimeID(itemupgrader.ItemMeta{Name: descriptor.Name})
+		rid, ok := t.latest.ItemNameToRuntimeID(descriptor.Name)
 		descriptor.Name = "minecraft:air"
 		if !ok {
 			return descriptor
 		}
 		itemType := t.DowngradeItemType(protocol.ItemType{NetworkID: rid})
-		if itemMeta, ok := t.mapping.ItemRuntimeIDToName(itemType.NetworkID); ok {
-			descriptor.Name = itemMeta.Name
+		if name, ok := t.mapping.ItemRuntimeIDToName(itemType.NetworkID); ok {
+			descriptor.Name = name
 		}
 		return descriptor
 	}
@@ -175,6 +173,9 @@ func (t *DefaultItemTranslator) DowngradeItemDescriptor(input protocol.ItemDescr
 }
 
 func (t *DefaultItemTranslator) DowngradeItemDescriptorCount(input protocol.ItemDescriptorCount) protocol.ItemDescriptorCount {
+	if t.latest == t.mapping {
+		return input
+	}
 	input.Descriptor = t.DowngradeItemDescriptor(input.Descriptor)
 	return input
 }
@@ -193,15 +194,15 @@ func (t *DefaultItemTranslator) UpgradeItemType(input protocol.ItemType) protoco
 
 	var ok bool
 	if networkID, ok = t.customToOriginal[input.NetworkID]; !ok {
-		itemMeta, _ := t.mapping.ItemRuntimeIDToName(input.NetworkID)
-		itemMeta.Meta = int16(metadata)
-		itemMeta = itemupgrader.Upgrade(itemMeta)
-		networkID, ok = t.latest.ItemNameToRuntimeID(itemMeta)
+		name, _ := t.mapping.ItemRuntimeIDToName(input.NetworkID)
+		i := item.Upgrade(item.Item{
+			Name:     name,
+			Metadata: input.MetadataValue,
+			Version:  t.mapping.ItemVersion(),
+		}, t.latest.ItemVersion())
+		networkID, ok = t.latest.ItemNameToRuntimeID(i.Name)
 		if !ok {
-			networkID, _ = t.latest.ItemNameToRuntimeID(itemupgrader.ItemMeta{Name: "minecraft:info_update"})
-			metadata = 0
-		} else {
-			metadata = uint32(itemMeta.Meta)
+			networkID, _ = t.latest.ItemNameToRuntimeID("minecraft:info_update")
 		}
 	}
 
@@ -219,9 +220,8 @@ func (t *DefaultItemTranslator) UpgradeItemStack(input protocol.ItemStack) proto
 
 	blockRuntimeId := uint32(0)
 	if input.NetworkID != t.latest.Air() {
-		itemMeta, _ := t.latest.ItemRuntimeIDToName(input.NetworkID)
-		itemMeta.Meta = int16(input.MetadataValue)
-		if latestBlockState, ok := item.BlockStateFromItem(itemMeta); ok {
+		name, _ := t.latest.ItemRuntimeIDToName(input.NetworkID)
+		if latestBlockState, ok := item.BlockStateFromItemName(name, input.MetadataValue); ok {
 			blockRuntimeId, _ = t.blockMappingLatest.StateToRuntimeID(latestBlockState)
 		}
 	}
@@ -237,6 +237,9 @@ func (t *DefaultItemTranslator) UpgradeItemStack(input protocol.ItemStack) proto
 }
 
 func (t *DefaultItemTranslator) UpgradeItemInstance(input protocol.ItemInstance) protocol.ItemInstance {
+	if t.latest == t.mapping {
+		return input
+	}
 	input.Stack = t.UpgradeItemStack(input.Stack)
 	return input
 }
@@ -257,7 +260,7 @@ func (t *DefaultItemTranslator) UpgradeItemDescriptor(input protocol.ItemDescrip
 	case *protocol.ItemTagItemDescriptor:
 		return input
 	case *protocol.DeferredItemDescriptor:
-		rid, ok := t.mapping.ItemNameToRuntimeID(itemupgrader.ItemMeta{Name: descriptor.Name})
+		rid, ok := t.mapping.ItemNameToRuntimeID(descriptor.Name)
 		descriptor.Name = "minecraft:air"
 		if !ok {
 			descriptor.MetadataValue = 0
@@ -265,23 +268,19 @@ func (t *DefaultItemTranslator) UpgradeItemDescriptor(input protocol.ItemDescrip
 		}
 		itemType := t.UpgradeItemType(protocol.ItemType{NetworkID: rid, MetadataValue: uint32(descriptor.MetadataValue)})
 		descriptor.MetadataValue = int16(itemType.MetadataValue)
-		if itemMeta, ok := t.latest.ItemRuntimeIDToName(itemType.NetworkID); ok {
-			itemMeta.Meta = descriptor.MetadataValue
-			itemMeta = itemupgrader.Upgrade(itemMeta)
-
-			descriptor.Name = itemMeta.Name
-			descriptor.MetadataValue = itemMeta.Meta
+		if name, ok := t.latest.ItemRuntimeIDToName(itemType.NetworkID); ok {
+			descriptor.Name = name
 		}
 		return descriptor
 	case *protocol.ComplexAliasItemDescriptor:
-		rid, ok := t.mapping.ItemNameToRuntimeID(itemupgrader.ItemMeta{Name: descriptor.Name})
+		rid, ok := t.mapping.ItemNameToRuntimeID(descriptor.Name)
 		descriptor.Name = "minecraft:air"
 		if !ok {
 			return descriptor
 		}
 		itemType := t.UpgradeItemType(protocol.ItemType{NetworkID: rid})
-		if itemMeta, ok := t.latest.ItemRuntimeIDToName(itemType.NetworkID); ok {
-			descriptor.Name = itemMeta.Name
+		if name, ok := t.latest.ItemRuntimeIDToName(itemType.NetworkID); ok {
+			descriptor.Name = name
 		}
 		return descriptor
 	}
@@ -289,6 +288,9 @@ func (t *DefaultItemTranslator) UpgradeItemDescriptor(input protocol.ItemDescrip
 }
 
 func (t *DefaultItemTranslator) UpgradeItemDescriptorCount(input protocol.ItemDescriptorCount) protocol.ItemDescriptorCount {
+	if t.latest == t.mapping {
+		return input
+	}
 	input.Descriptor = t.UpgradeItemDescriptor(input.Descriptor)
 	return input
 }
@@ -303,6 +305,12 @@ func (t *DefaultItemTranslator) DowngradeItemPackets(pks []packet.Packet, _ *min
 			pk.Chestplate = t.DowngradeItemInstance(pk.Chestplate)
 			pk.Leggings = t.DowngradeItemInstance(pk.Leggings)
 			pk.Boots = t.DowngradeItemInstance(pk.Boots)
+		case *packet.ActorEvent:
+			if pk.EventType == packet.ActorEventFeed {
+				value := pk.EventData
+				itemType := t.DowngradeItemType(protocol.ItemType{NetworkID: value >> 16, MetadataValue: uint32(value & 0xf)})
+				pk.EventData = (itemType.NetworkID << 16) | int32(itemType.MetadataValue)
+			}
 		case *packet.AddItemActor:
 			pk.Item = t.DowngradeItemInstance(pk.Item)
 		case *packet.AddPlayer:
@@ -439,7 +447,6 @@ func (t *DefaultItemTranslator) DowngradeItemPackets(pks []packet.Packet, _ *min
 		case *packet.CreativeContent:
 			for i, creativeItem := range pk.Items {
 				creativeItem.Item = t.DowngradeItemStack(creativeItem.Item)
-
 				pk.Items[i] = creativeItem
 			}
 		case *packet.InventoryTransaction:
@@ -482,8 +489,9 @@ func (t *DefaultItemTranslator) DowngradeItemPackets(pks []packet.Packet, _ *min
 					}
 					entry.RuntimeID = int16(itemType.NetworkID)
 
-					if itemMeta, ok := t.mapping.ItemRuntimeIDToName(itemType.NetworkID); ok {
-						entry.Name = itemMeta.Name
+					var ok bool
+					if entry.Name, ok = t.mapping.ItemRuntimeIDToName(itemType.NetworkID); !ok {
+						panic(itemType)
 					}
 				} else {
 					t.latest.RegisterEntry(entry.Name)
@@ -499,14 +507,8 @@ func (t *DefaultItemTranslator) DowngradeItemPackets(pks []packet.Packet, _ *min
 					ComponentBased: true,
 				})
 			}
-		case *packet.ItemComponent:
-			for _, i := range t.CustomItems() {
-				name, _ := i.EncodeItem()
-				pk.Items = append(pk.Items, protocol.ItemComponentEntry{
-					Name: name,
-					Data: packbuilder.Components(i),
-				})
-			}
+		case *packet.ItemRegistry:
+			continue
 		}
 		result = append(result, pk)
 	}
@@ -697,8 +699,9 @@ func (t *DefaultItemTranslator) UpgradeItemPackets(pks []packet.Packet, _ *minec
 					})
 					entry.RuntimeID = int16(itemType.NetworkID)
 
-					if itemMeta, ok := t.latest.ItemRuntimeIDToName(itemType.NetworkID); ok {
-						entry.Name = itemMeta.Name
+					var ok bool
+					if entry.Name, ok = t.latest.ItemRuntimeIDToName(itemType.NetworkID); !ok {
+						panic(itemType)
 					}
 				} else {
 					t.latest.RegisterEntry(entry.Name)
@@ -714,21 +717,13 @@ func (t *DefaultItemTranslator) UpgradeItemPackets(pks []packet.Packet, _ *minec
 					ComponentBased: true,
 				})
 			}
-		case *packet.ItemComponent:
-			for _, i := range t.CustomItems() {
-				name, _ := i.EncodeItem()
-				pk.Items = append(pk.Items, protocol.ItemComponentEntry{
-					Name: name,
-					Data: packbuilder.Components(i),
-				})
-			}
 		}
 		result = append(result, pk)
 	}
 	return result
 }
 
-func (t *DefaultItemTranslator) Register(item world.CustomItem, replacement itemupgrader.ItemMeta) {
+func (t *DefaultItemTranslator) Register(item world.CustomItem, replacement string) {
 	name, _ := item.EncodeItem()
 	originalRid, ok := t.latest.ItemNameToRuntimeID(replacement)
 	if !ok {

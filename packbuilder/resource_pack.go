@@ -1,10 +1,11 @@
 package packbuilder
 
 import (
+	"os"
+
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/rogpeppe/go-internal/dirhash"
 	"github.com/sandertv/gophertunnel/minecraft/resource"
-	"os"
 )
 
 // BuildResourcePack builds a resource pack based on custom features that have been registered to the server.

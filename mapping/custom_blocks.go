@@ -2,12 +2,10 @@ package mapping
 
 import (
 	"github.com/df-mc/worldupgrader/blockupgrader"
-	"github.com/flonja/multiversion/internal"
+	"github.com/didntpot/multiversion/internal"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"golang.org/x/exp/maps"
 )
-
-// Thank you ViaBedrock! https://github.com/RaphiMC/ViaBedrock/blob/main/src/main/java/net/raphimc/viabedrock/protocol/rewriter/BlockStateRewriter.java
 
 func convert(entries []protocol.BlockEntry) (states []blockupgrader.BlockState) {
 	for _, entry := range entries {
@@ -17,6 +15,15 @@ func convert(entries []protocol.BlockEntry) (states []blockupgrader.BlockState) 
 				prop := prop.(map[string]any)
 				name := jsonCheck[string](prop, "name")
 				enum := jsonCheck[[]any](prop, "enum")
+				if enum == nil {
+					int32Enum := jsonCheck[[]int32](prop, "enum")
+					if int32Enum != nil {
+						enum = &[]any{}
+						for _, i := range *int32Enum {
+							*enum = append(*enum, i)
+						}
+					}
+				}
 				if name == nil || enum == nil {
 					panic("could not find field `name` and `enum`")
 				}

@@ -2,8 +2,9 @@ package chunk
 
 import (
 	"bytes"
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"sync"
+
+	"github.com/df-mc/dragonfly/server/block/cube"
 )
 
 // pool is used to pool byte buffers used for encoding chunks.
@@ -13,19 +14,10 @@ var pool = sync.Pool{
 	},
 }
 
-func NetworkEncode(air uint32, c *Chunk, oldFormat bool) ([]byte, error) {
+func NetworkEncode(air uint32, c *Chunk, oldFormat bool, pe PaletteEncoding) ([]byte, error) {
 	buf := pool.Get().(*bytes.Buffer)
-	if oldFormat {
-		for y := 0; y < 4; y++ {
-			_, _ = buf.Write(EncodeSubChunk(NewSubChunk(air), NetworkEncoding, SubChunkVersion8, c.r, y))
-		}
-	}
 	for i := 0; i < len(c.sub); i++ {
-		index := i
-		if oldFormat {
-			index += 4
-		}
-		_, _ = buf.Write(EncodeSubChunk(c.sub[index], NetworkEncoding, SubChunkVersion8, c.r, index))
+		_, _ = buf.Write(EncodeSubChunk(c.sub[i], NetworkEncoding, pe, SubChunkVersion8, c.r, i))
 	}
 	if oldFormat {
 		biomes := make([]byte, 256)
@@ -46,16 +38,16 @@ func NetworkEncode(air uint32, c *Chunk, oldFormat bool) ([]byte, error) {
 
 // EncodeSubChunk encodes a sub-chunk from a chunk into bytes. An Encoding may be passed to encode either for network or
 // disk purposed, the most notable difference being that the network encoding generally uses varints and no NBT.
-func EncodeSubChunk(s *SubChunk, e Encoding, subChunkVer subChunkVersion, r cube.Range, ind int) []byte {
+func EncodeSubChunk(s *SubChunk, e Encoding, pe PaletteEncoding, subChunkVer subChunkVersion, r cube.Range, ind int) []byte {
 	buf := pool.Get().(*bytes.Buffer)
 	defer func() {
 		buf.Reset()
 		pool.Put(buf)
 	}()
 
-	subChunkVer.encodeHeader(buf, s, r, ind)
+	subChunkVer.EncodeHeader(buf, s, r, ind)
 	for _, storage := range s.storages {
-		encodePalettedStorage(buf, storage, nil, e, BlockPaletteEncoding)
+		encodePalettedStorage(buf, storage, nil, e, pe)
 	}
 	sub := make([]byte, buf.Len())
 	_, _ = buf.Read(sub)
@@ -83,13 +75,13 @@ func EncodeBiomes(c *Chunk, e Encoding) []byte {
 
 // encodePalettedStorage encodes a PalettedStorage into a bytes.Buffer. The Encoding passed is used to write the Palette
 // of the PalettedStorage.
-func encodePalettedStorage(buf *bytes.Buffer, storage, previous *PalettedStorage, e Encoding, pe paletteEncoding) {
+func encodePalettedStorage(buf *bytes.Buffer, storage, previous *PalettedStorage, e Encoding, pe PaletteEncoding) {
 	if storage.Equal(previous) {
-		_, _ = buf.Write([]byte{0x7f<<1 | e.network()})
+		_, _ = buf.Write([]byte{0x7f<<1 | e.Network()})
 		return
 	}
 	b := make([]byte, len(storage.indices)*4+1)
-	b[0] = byte(storage.bitsPerIndex<<1) | e.network()
+	b[0] = byte(storage.bitsPerIndex<<1) | e.Network()
 
 	for i, v := range storage.indices {
 		// Explicitly don't use the binary package to greatly improve performance of writing the uint32s.
@@ -97,5 +89,5 @@ func encodePalettedStorage(buf *bytes.Buffer, storage, previous *PalettedStorage
 	}
 	_, _ = buf.Write(b)
 
-	e.encodePalette(buf, storage.palette, pe)
+	e.EncodePalette(buf, storage.palette, pe)
 }
