@@ -106,6 +106,7 @@ func (Protocol) Packets(bool) packet.Pool {
 	pool[packet.IDMobArmourEquipment] = func() packet.Packet { return &legacypacket.MobArmourEquipment{} }
 	pool[packet.IDSetTitle] = func() packet.Packet { return &legacypacket.SetTitle{} }
 	pool[packet.IDStopSound] = func() packet.Packet { return &legacypacket.StopSound{} }
+	pool[packet.IDLevelSoundEvent] = func() packet.Packet { return &legacypacket.LevelSoundEvent{} }
 	return pool
 }
 
@@ -113,6 +114,15 @@ func (Protocol) Packets(bool) packet.Pool {
 func (p Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []packet.Packet {
 	var newPks []packet.Packet
 	switch pk := pk.(type) {
+	case *legacypacket.LevelSoundEvent:
+		newPks = append(newPks, &packet.LevelSoundEvent{
+			SoundType:             pk.SoundType,
+			Position:              pk.Position,
+			ExtraData:             pk.ExtraData,
+			EntityType:            pk.EntityType,
+			BabyMob:               pk.BabyMob,
+			DisableRelativeVolume: pk.DisableRelativeVolume,
+		})
 	case *packet.ClientCacheStatus:
 		pk.Enabled = false
 		newPks = append(newPks, pk)
