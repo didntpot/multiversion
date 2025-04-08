@@ -1,13 +1,18 @@
 # multiversion
-A gophertunnel library intended to be used with Dragonfly, or alongside Spectrum.
+a gophertunnel library for use with dragonfly or alongside spectrum.
 
-### Working versions
-- Latest, which is currently 1.21.70
+### working versions
+- latest (1.21.70)
 - 1.18.12 (`v486`)
 
-### Soon to come
+### soon to come
 - 1.16.100 (`v419`)
 
-### Credits
-- flonja for making the original base & protocol impl
-- didntpot for maintaining it
+### how to use
+- proxy: [examples/proxy/main.go](examples/proxy/main.go)
+- server: [examples/server/main.go](examples/server/main.go)
+- spectrum: [examples/proxy/spectrum.go](examples/proxy/main.go)
+
+### credits
+- flonja – original base and protocol implementation
+- didntpot – maintenance and updates
