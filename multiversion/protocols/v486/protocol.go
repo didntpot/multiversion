@@ -117,14 +117,7 @@ func (p Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []pack
 	case *legacypacket.TickSync:
 		return nil
 	case *legacypacket.LevelSoundEvent:
-		newPks = append(newPks, &packet.LevelSoundEvent{
-			SoundType:             pk.SoundType,
-			Position:              pk.Position,
-			ExtraData:             pk.ExtraData,
-			EntityType:            pk.EntityType,
-			BabyMob:               pk.BabyMob,
-			DisableRelativeVolume: pk.DisableRelativeVolume,
-		})
+		return nil
 	case *packet.ClientCacheStatus:
 		pk.Enabled = false
 		newPks = append(newPks, pk)
