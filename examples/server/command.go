@@ -1,7 +1,6 @@
 package main
 
 import (
-	"runtime/debug"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/cmd"
@@ -23,7 +22,6 @@ type GameMode struct {
 func (com GameMode) Run(src cmd.Source, _ *cmd.Output, _ *world.Tx) {
 	p := src.(*player.Player)
 
-	debug.PrintStack()
 	var name string
 	var mode world.GameMode
 	switch strings.ToLower(string(com.GameMode)) {
