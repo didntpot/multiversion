@@ -18,7 +18,7 @@ func (x *CraftRecipeStackRequestAction) Marshal(io protocol.IO) {
 // CraftCreativeStackRequestAction is sent by the client when it takes an item out fo the creative inventory.
 // The item is thus not really crafted, but instantly created.
 type CraftCreativeStackRequestAction struct {
-	CreativeItemNetworkID uint32
+	protocol.CraftCreativeStackRequestAction
 }
 
 // Marshal ...

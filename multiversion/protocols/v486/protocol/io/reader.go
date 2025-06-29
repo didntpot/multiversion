@@ -85,7 +85,7 @@ func (r *Reader) lookupStackRequestAction(id uint8, x *protocol.StackRequestActi
 	case protocol.StackRequestActionCraftRecipeAuto:
 		*x = &legacyprotocol.AutoCraftRecipeStackRequestAction{AutoCraftRecipeStackRequestAction: protocol.AutoCraftRecipeStackRequestAction{}}
 	case protocol.StackRequestActionCraftCreative:
-		*x = &protocol.CraftCreativeStackRequestAction{}
+		*x = &legacyprotocol.CraftCreativeStackRequestAction{CraftCreativeStackRequestAction: protocol.CraftCreativeStackRequestAction{}}
 	case protocol.StackRequestActionCraftRecipeOptional:
 		*x = &protocol.CraftRecipeOptionalStackRequestAction{}
 	case protocol.StackRequestActionCraftGrindstone:

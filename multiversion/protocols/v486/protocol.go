@@ -205,6 +205,8 @@ func (p Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []pack
 							return &action.TakeOutContainerStackRequestAction
 						case *legacyprotocol.AutoCraftRecipeStackRequestAction:
 							return &action.AutoCraftRecipeStackRequestAction
+						case *legacyprotocol.CraftCreativeStackRequestAction:
+							return &action.CraftCreativeStackRequestAction
 						}
 						return item
 					}),
@@ -276,6 +278,8 @@ func (p Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []pack
 						return &action.TakeOutContainerStackRequestAction
 					case *legacyprotocol.AutoCraftRecipeStackRequestAction:
 						return &action.AutoCraftRecipeStackRequestAction
+					case *legacyprotocol.CraftCreativeStackRequestAction:
+						return &action.CraftCreativeStackRequestAction
 					}
 					return item
 				}),
