@@ -2,7 +2,6 @@ package v486
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/didntpot/multiversion/multiversion/internal/chunk"
 	"github.com/didntpot/multiversion/multiversion/mapping"
@@ -107,6 +106,7 @@ func (Protocol) Packets(bool) packet.Pool {
 	pool[packet.IDSetTitle] = func() packet.Packet { return &legacypacket.SetTitle{} }
 	pool[packet.IDStopSound] = func() packet.Packet { return &legacypacket.StopSound{} }
 	pool[packet.IDLevelSoundEvent] = func() packet.Packet { return &legacypacket.LevelSoundEvent{} }
+	pool[legacypacket.IDTickSync] = func() packet.Packet { return &legacypacket.TickSync{} }
 	return pool
 }
 
@@ -114,6 +114,8 @@ func (Protocol) Packets(bool) packet.Pool {
 func (p Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []packet.Packet {
 	var newPks []packet.Packet
 	switch pk := pk.(type) {
+	case *legacypacket.TickSync:
+		return nil
 	case *legacypacket.LevelSoundEvent:
 		newPks = append(newPks, &packet.LevelSoundEvent{
 			SoundType:             pk.SoundType,
@@ -304,9 +306,6 @@ func (p Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []pack
 			XUID:             pk.XUID,
 			PlatformChatID:   pk.PlatformChatID,
 		})
-	case *packet.PacketViolationWarning:
-		fmt.Println(pk)
-	case *packet.TickSync:
 	default:
 		newPks = append(newPks, pk)
 	}
@@ -318,6 +317,10 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 	result = p.blockTranslator.DowngradeBlockPackets(p.itemTranslator.DowngradeItemPackets([]packet.Packet{pk}, conn), conn)
 	for i, pk := range result {
 		switch pk := pk.(type) {
+		case *packet.BiomeDefinitionList:
+			return []packet.Packet{
+				&legacypacket.BiomeDefinitionList{SerialisedBiomeDefinitions: legacySerialisedBiomeDefinitions},
+			}
 		case *packet.LevelSoundEvent:
 			result[i] = &legacypacket.LevelSoundEvent{
 				SoundType:             pk.SoundType,
@@ -588,6 +591,22 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 				BlobHashes:      pk.BlobHashes,
 				RawPayload:      pk.RawPayload,
 			}
+		case *packet.SubChunk:
+			result[i] = &legacypacket.SubChunk{
+				CacheEnabled: pk.CacheEnabled,
+				Dimension:    pk.Dimension,
+				Position:     pk.Position,
+				SubChunkEntries: lo.Map(pk.SubChunkEntries, func(entry protocol.SubChunkEntry, _ int) legacyprotocol.SubChunkEntry {
+					return legacyprotocol.SubChunkEntry{
+						Offset:        entry.Offset,
+						Result:        entry.Result,
+						RawPayload:    entry.RawPayload,
+						HeightMapType: entry.HeightMapType,
+						HeightMapData: entry.HeightMapData,
+						BlobHash:      entry.BlobHash,
+					}
+				}),
+			}
 		case *packet.MobArmourEquipment:
 			result[i] = &legacypacket.MobArmourEquipment{
 				EntityRuntimeID: pk.EntityRuntimeID,
@@ -743,10 +762,14 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 				WorldName:                      pk.WorldName,
 				TemplateContentIdentity:        pk.TemplateContentIdentity,
 				Trial:                          pk.Trial,
-				PlayerMovementSettings:         pk.PlayerMovementSettings,
-				Time:                           pk.Time,
-				EnchantmentSeed:                pk.EnchantmentSeed,
-				Blocks:                         pk.Blocks,
+				PlayerMovementSettings: legacyprotocol.PlayerMovementSettings{
+					MovementType:                     legacyprotocol.PlayerMovementModeServer,
+					RewindHistorySize:                pk.PlayerMovementSettings.RewindHistorySize,
+					ServerAuthoritativeBlockBreaking: pk.PlayerMovementSettings.ServerAuthoritativeBlockBreaking,
+				},
+				Time:            pk.Time,
+				EnchantmentSeed: pk.EnchantmentSeed,
+				Blocks:          pk.Blocks,
 				Items: lo.Map(pk.Items, func(entry protocol.ItemEntry, _ int) legacyprotocol.ItemEntry {
 					return legacyprotocol.ItemEntry{
 						Name:           entry.Name,

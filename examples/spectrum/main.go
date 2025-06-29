@@ -26,7 +26,7 @@ var clientDecode = []uint32{ // TODO: This is the bare minimum to get the client
 // spectrum-pm:
 // \cooldogedev\Spectrum\Spectrum->registerPacketDecode(23, true)
 // spectrum-df:
-// util.RegisterPacketDecode(packet.IDTickSync, true)
+// spectrum.RegisterPacketDecode(packet.IDTickSync, true)
 
 func main() {
 	slog.SetLogLoggerLevel(slog.LevelDebug)

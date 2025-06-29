@@ -61,7 +61,7 @@ type StartGame struct {
 	WorldName                            string
 	TemplateContentIdentity              string
 	Trial                                bool
-	PlayerMovementSettings               protocol.PlayerMovementSettings
+	PlayerMovementSettings               legacyprotocol.PlayerMovementSettings
 	Time                                 int64
 	EnchantmentSeed                      int32
 	Blocks                               []protocol.BlockEntry
@@ -135,7 +135,7 @@ func (pk *StartGame) Marshal(io protocol.IO) {
 	io.String(&pk.WorldName)
 	io.String(&pk.TemplateContentIdentity)
 	io.Bool(&pk.Trial)
-	protocol.PlayerMoveSettings(io, &pk.PlayerMovementSettings)
+	legacyprotocol.PlayerMoveSettings(io, &pk.PlayerMovementSettings)
 	io.Int64(&pk.Time)
 	io.Varint32(&pk.EnchantmentSeed)
 	protocol.Slice(io, &pk.Blocks)

@@ -1,6 +1,7 @@
 package packet
 
 import (
+	legacyprotocol "github.com/didntpot/multiversion/multiversion/protocols/v486/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -9,7 +10,7 @@ type SubChunk struct {
 	CacheEnabled    bool
 	Dimension       int32
 	Position        protocol.SubChunkPos
-	SubChunkEntries []protocol.SubChunkEntry
+	SubChunkEntries []legacyprotocol.SubChunkEntry
 }
 
 // ID ...
@@ -25,6 +26,6 @@ func (pk *SubChunk) Marshal(io protocol.IO) {
 	if pk.CacheEnabled {
 		protocol.SliceUint32Length(io, &pk.SubChunkEntries)
 	} else {
-		protocol.FuncIOSliceUint32Length(io, &pk.SubChunkEntries, protocol.SubChunkEntryNoCache)
+		protocol.FuncIOSliceUint32Length(io, &pk.SubChunkEntries, legacyprotocol.SubChunkEntryNoCache)
 	}
 }
