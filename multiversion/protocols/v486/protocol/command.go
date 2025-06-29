@@ -2,6 +2,28 @@ package protocol
 
 import "github.com/sandertv/gophertunnel/minecraft/protocol"
 
+const (
+	CommandArgValid    = 0x100000
+	CommandArgEnum     = 0x200000
+	CommandArgSuffixed = 0x1000000
+	CommandArgSoftEnum = 0x4000000
+
+	CommandArgTypeInt            = 1
+	CommandArgTypeFloat          = 3
+	CommandArgTypeValue          = 4
+	CommandArgTypeWildcardInt    = 5
+	CommandArgTypeOperator       = 6
+	CommandArgTypeTarget         = 7
+	CommandArgTypeWildcardTarget = 8
+	CommandArgTypeFilepath       = 16
+	CommandArgTypeString         = 32
+	CommandArgTypePosition       = 40
+	CommandArgTypeMessage        = 44
+	CommandArgTypeRawText        = 46
+	CommandArgTypeJSON           = 50
+	CommandArgTypeCommand        = 63
+)
+
 // Command holds the data that a command requires to be shown to a player client-side. The command is shown in
 // the /help command and auto-completed using this data.
 type Command struct {
