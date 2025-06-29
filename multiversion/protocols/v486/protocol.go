@@ -556,11 +556,13 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 				}
 			}
 			result[i] = &legacypacket.CraftingData{
-				Recipes:                      recipes,
-				PotionRecipes:                pk.PotionRecipes,
-				PotionContainerChangeRecipes: pk.PotionContainerChangeRecipes,
-				MaterialReducers:             pk.MaterialReducers,
-				ClearRecipes:                 pk.ClearRecipes,
+				ClearRecipes: true,
+				// TODO: Fix all incorrect recipes.
+				// Recipes:                      recipes,
+				// PotionRecipes:                pk.PotionRecipes,
+				// PotionContainerChangeRecipes: pk.PotionContainerChangeRecipes,
+				// MaterialReducers:             pk.MaterialReducers,
+				// ClearRecipes:                 pk.ClearRecipes,
 			}
 		case *packet.CreativeContent:
 			result[i] = &legacypacket.CreativeContent{
