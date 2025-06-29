@@ -11,7 +11,7 @@ import (
 // includes shapeless crafting, crafting table recipes, furnace recipes etc. Each crafting station's recipes
 // are included in it.
 type CraftingData struct {
-	Recipes                      []protocol.Recipe
+	Recipes                      []legacyprotocol.Recipe
 	PotionRecipes                []protocol.PotionRecipe
 	PotionContainerChangeRecipes []protocol.PotionContainerChangeRecipe
 	MaterialReducers             []protocol.MaterialReducer
@@ -30,22 +30,22 @@ func (pk *CraftingData) Marshal(io protocol.IO) {
 	for _, recipe := range pk.Recipes {
 		var c int32
 		switch recipe.(type) {
-		case *protocol.ShapelessRecipe:
-			c = protocol.RecipeShapeless
-		case *protocol.ShapedRecipe:
-			c = protocol.RecipeShaped
-		case *protocol.FurnaceRecipe:
-			c = protocol.RecipeFurnace
-		case *protocol.FurnaceDataRecipe:
-			c = protocol.RecipeFurnaceData
-		case *protocol.MultiRecipe:
-			c = protocol.RecipeMulti
-		case *protocol.ShulkerBoxRecipe:
-			c = protocol.RecipeShulkerBox
-		case *protocol.ShapelessChemistryRecipe:
-			c = protocol.RecipeShapelessChemistry
-		case *protocol.ShapedChemistryRecipe:
-			c = protocol.RecipeShapedChemistry
+		case *legacyprotocol.ShapelessRecipe:
+			c = legacyprotocol.RecipeShapeless
+		case *legacyprotocol.ShapedRecipe:
+			c = legacyprotocol.RecipeShaped
+		case *legacyprotocol.FurnaceRecipe:
+			c = legacyprotocol.RecipeFurnace
+		case *legacyprotocol.FurnaceDataRecipe:
+			c = legacyprotocol.RecipeFurnaceData
+		case *legacyprotocol.MultiRecipe:
+			c = legacyprotocol.RecipeMulti
+		case *legacyprotocol.ShulkerBoxRecipe:
+			c = legacyprotocol.RecipeShulkerBox
+		case *legacyprotocol.ShapelessChemistryRecipe:
+			c = legacyprotocol.RecipeShapelessChemistry
+		case *legacyprotocol.ShapedChemistryRecipe:
+			c = legacyprotocol.RecipeShapedChemistry
 		default:
 			io.UnknownEnumOption(fmt.Sprintf("%T", recipe), "crafting recipe type")
 		}

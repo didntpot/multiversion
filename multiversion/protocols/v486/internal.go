@@ -111,9 +111,7 @@ func (Internal) upgradeEntityMetadata(data map[uint32]any) map[uint32]any {
 }
 
 // downgradeCraftingDescription ...
-func (Internal) downgradeCraftingDescription(descriptor protocol.ItemDescriptor, m mapping.Item) protocol.ItemDescriptor { // TODO: ..?
-	var networkId int32
-	var metadata int32
+func (Internal) downgradeCraftingDescription(descriptor protocol.ItemDescriptor, m mapping.Item) (networkId, metadata int32) { // TODO: ..?
 	switch descriptor := descriptor.(type) {
 	case *protocol.DefaultItemDescriptor:
 		networkId = int32(descriptor.NetworkID)
@@ -128,10 +126,7 @@ func (Internal) downgradeCraftingDescription(descriptor protocol.ItemDescriptor,
 	case *protocol.ComplexAliasItemDescriptor:
 		/// ?????
 	}
-	return &legacyprotocol.DefaultItemDescriptor{
-		NetworkID:     networkId,
-		MetadataValue: metadata,
-	}
+	return
 }
 
 // upgradeCraftingDescription ...

@@ -203,6 +203,8 @@ func (p Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []pack
 							return &action.PlaceInContainerStackRequestAction
 						case *legacyprotocol.TakeOutContainerStackRequestAction:
 							return &action.TakeOutContainerStackRequestAction
+						case *legacyprotocol.CraftRecipeStackRequestAction:
+							return &action.CraftRecipeStackRequestAction
 						case *legacyprotocol.AutoCraftRecipeStackRequestAction:
 							return &action.AutoCraftRecipeStackRequestAction
 						case *legacyprotocol.CraftCreativeStackRequestAction:
@@ -276,6 +278,8 @@ func (p Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []pack
 						return &action.PlaceInContainerStackRequestAction
 					case *legacyprotocol.TakeOutContainerStackRequestAction:
 						return &action.TakeOutContainerStackRequestAction
+					case *legacyprotocol.CraftRecipeStackRequestAction:
+						return &action.CraftRecipeStackRequestAction
 					case *legacyprotocol.AutoCraftRecipeStackRequestAction:
 						return &action.AutoCraftRecipeStackRequestAction
 					case *legacyprotocol.CraftCreativeStackRequestAction:
@@ -474,55 +478,109 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 			pk.NBTData = p.internal.downgradeBlockActorData(pk.NBTData)
 			result[i] = pk
 		case *packet.CraftingData:
-			result[i] = &packet.CraftingData{
-				ClearRecipes: true,
+			recipes := make([]legacyprotocol.Recipe, 0, len(pk.Recipes))
+			for _, recipe := range pk.Recipes {
+				switch recipe := recipe.(type) {
+				case *protocol.ShapelessRecipe:
+					recipes = append(recipes, &legacyprotocol.ShapelessRecipe{
+						RecipeID: recipe.RecipeID,
+						Input: lo.Map(recipe.Input, func(item protocol.ItemDescriptorCount, _ int) legacyprotocol.RecipeIngredientItem {
+							networkId, metadata := p.internal.downgradeCraftingDescription(item.Descriptor, p.itemMapping)
+							return legacyprotocol.RecipeIngredientItem{
+								NetworkID:     networkId,
+								MetadataValue: metadata,
+								Count:         item.Count,
+							}
+						}),
+						Output:          recipe.Output,
+						UUID:            recipe.UUID,
+						Block:           recipe.Block,
+						Priority:        recipe.Priority,
+						RecipeNetworkID: recipe.RecipeNetworkID,
+					})
+				case *protocol.ShapedRecipe:
+					recipes = append(recipes, &legacyprotocol.ShapedRecipe{
+						RecipeID: recipe.RecipeID,
+						Width:    recipe.Width,
+						Height:   recipe.Height,
+						Input: lo.Map(recipe.Input, func(item protocol.ItemDescriptorCount, _ int) legacyprotocol.RecipeIngredientItem {
+							networkId, metadata := p.internal.downgradeCraftingDescription(item.Descriptor, p.itemMapping)
+							return legacyprotocol.RecipeIngredientItem{
+								NetworkID:     networkId,
+								MetadataValue: metadata,
+								Count:         item.Count,
+							}
+						}),
+						Output:          recipe.Output,
+						UUID:            recipe.UUID,
+						Block:           recipe.Block,
+						Priority:        recipe.Priority,
+						RecipeNetworkID: recipe.RecipeNetworkID,
+					})
+				case *protocol.ShulkerBoxRecipe:
+					recipes = append(recipes, &legacyprotocol.ShulkerBoxRecipe{
+						RecipeID: recipe.RecipeID,
+						Input: lo.Map(recipe.Input, func(item protocol.ItemDescriptorCount, _ int) legacyprotocol.RecipeIngredientItem {
+							networkId, metadata := p.internal.downgradeCraftingDescription(item.Descriptor, p.itemMapping)
+							return legacyprotocol.RecipeIngredientItem{
+								NetworkID:     networkId,
+								MetadataValue: metadata,
+								Count:         item.Count,
+							}
+						}),
+						Output:          recipe.Output,
+						UUID:            recipe.UUID,
+						Block:           recipe.Block,
+						Priority:        recipe.Priority,
+						RecipeNetworkID: recipe.RecipeNetworkID,
+					})
+				case *protocol.ShapelessChemistryRecipe:
+					recipes = append(recipes, &legacyprotocol.ShapelessChemistryRecipe{
+						RecipeID: recipe.RecipeID,
+						Input: lo.Map(recipe.Input, func(item protocol.ItemDescriptorCount, _ int) legacyprotocol.RecipeIngredientItem {
+							networkId, metadata := p.internal.downgradeCraftingDescription(item.Descriptor, p.itemMapping)
+							return legacyprotocol.RecipeIngredientItem{
+								NetworkID:     networkId,
+								MetadataValue: metadata,
+								Count:         item.Count,
+							}
+						}),
+						Output:          recipe.Output,
+						UUID:            recipe.UUID,
+						Block:           recipe.Block,
+						Priority:        recipe.Priority,
+						RecipeNetworkID: recipe.RecipeNetworkID,
+					})
+				case *protocol.ShapedChemistryRecipe:
+					recipes = append(recipes, &legacyprotocol.ShapedChemistryRecipe{
+						RecipeID: recipe.RecipeID,
+						Width:    recipe.Width,
+						Height:   recipe.Height,
+						Input: lo.Map(recipe.Input, func(item protocol.ItemDescriptorCount, _ int) legacyprotocol.RecipeIngredientItem {
+							networkId, metadata := p.internal.downgradeCraftingDescription(item.Descriptor, p.itemMapping)
+							return legacyprotocol.RecipeIngredientItem{
+								NetworkID:     networkId,
+								MetadataValue: metadata,
+								Count:         item.Count,
+							}
+						}),
+						Output:          recipe.Output,
+						UUID:            recipe.UUID,
+						Block:           recipe.Block,
+						Priority:        recipe.Priority,
+						RecipeNetworkID: recipe.RecipeNetworkID,
+					})
+				case *protocol.SmithingTransformRecipe, *protocol.SmithingTrimRecipe:
+					// Just ignore these entries completely.
+				}
 			}
-			continue
-			// TODO: Downgrade crafting data
-			//for i, recipe := range pk.Recipes {
-			//	switch recipe := recipe.(type) {
-			//	case *protocol.ShapelessRecipe:
-			//		recipe.Input = lo.Map(recipe.Input, func(item protocol.ItemDescriptorCount, _ int) protocol.ItemDescriptorCount {
-			//			item.Descriptor = downgradeCraftingDescription(item.Descriptor, p.itemMapping)
-			//			return item
-			//		})
-			//		pk.Recipes[i] = recipe
-			//	case *protocol.ShapedRecipe:
-			//		recipe.Input = lo.Map(recipe.Input, func(item protocol.ItemDescriptorCount, _ int) protocol.ItemDescriptorCount {
-			//			item.Descriptor = downgradeCraftingDescription(item.Descriptor, p.itemMapping)
-			//			return item
-			//		})
-			//		pk.Recipes[i] = recipe
-			//	case *protocol.ShulkerBoxRecipe:
-			//		recipe.Input = lo.Map(recipe.Input, func(item protocol.ItemDescriptorCount, _ int) protocol.ItemDescriptorCount {
-			//			item.Descriptor = downgradeCraftingDescription(item.Descriptor, p.itemMapping)
-			//			return item
-			//		})
-			//		pk.Recipes[i] = recipe
-			//	case *protocol.ShapelessChemistryRecipe:
-			//		recipe.Input = lo.Map(recipe.Input, func(item protocol.ItemDescriptorCount, _ int) protocol.ItemDescriptorCount {
-			//			item.Descriptor = downgradeCraftingDescription(item.Descriptor, p.itemMapping)
-			//			return item
-			//		})
-			//		pk.Recipes[i] = recipe
-			//	case *protocol.ShapedChemistryRecipe:
-			//		recipe.Input = lo.Map(recipe.Input, func(item protocol.ItemDescriptorCount, _ int) protocol.ItemDescriptorCount {
-			//			item.Descriptor = downgradeCraftingDescription(item.Descriptor, p.itemMapping)
-			//			return item
-			//		})
-			//		pk.Recipes[i] = recipe
-			//	case *protocol.SmithingTransformRecipe:
-			//		recipe.Template.Descriptor = downgradeCraftingDescription(recipe.Template.Descriptor, p.itemMapping)
-			//		recipe.Base.Descriptor = downgradeCraftingDescription(recipe.Base.Descriptor, p.itemMapping)
-			//		recipe.Addition.Descriptor = downgradeCraftingDescription(recipe.Addition.Descriptor, p.itemMapping)
-			//		pk.Recipes[i] = recipe
-			//	case *protocol.SmithingTrimRecipe:
-			//		recipe.Template.Descriptor = downgradeCraftingDescription(recipe.Template.Descriptor, p.itemMapping)
-			//		recipe.Base.Descriptor = downgradeCraftingDescription(recipe.Base.Descriptor, p.itemMapping)
-			//		recipe.Addition.Descriptor = downgradeCraftingDescription(recipe.Addition.Descriptor, p.itemMapping)
-			//	}
-			//}
-			//result[i] = pk
+			result[i] = &legacypacket.CraftingData{
+				Recipes:                      recipes,
+				PotionRecipes:                pk.PotionRecipes,
+				PotionContainerChangeRecipes: pk.PotionContainerChangeRecipes,
+				MaterialReducers:             pk.MaterialReducers,
+				ClearRecipes:                 pk.ClearRecipes,
+			}
 		case *packet.CreativeContent:
 			result[i] = &legacypacket.CreativeContent{
 				Items: lo.Map(pk.Items, func(it protocol.CreativeItem, _ int) legacyprotocol.CreativeItem {

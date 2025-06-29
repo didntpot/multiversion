@@ -7,7 +7,7 @@ import "github.com/sandertv/gophertunnel/minecraft/protocol"
 // This action is also sent when an item is enchanted. Enchanting should be treated mostly the same way as
 // crafting, where the old item is consumed.
 type CraftRecipeStackRequestAction struct {
-	RecipeNetworkID uint32
+	protocol.CraftRecipeStackRequestAction
 }
 
 // Marshal ...
@@ -51,13 +51,6 @@ type CraftGrindstoneRecipeStackRequestAction struct {
 func (x *CraftGrindstoneRecipeStackRequestAction) Marshal(io protocol.IO) {
 	io.Varuint32(&x.RecipeNetworkID)
 	io.Varint32(&x.Cost)
-}
-
-// StackRequestSlotInfo holds information on a specific slot client-side.
-type StackRequestSlotInfo struct { // TODO: do we use this?
-	ContainerID    byte
-	Slot           byte
-	StackNetworkID int32
 }
 
 // StackResponseSlotInfo holds information on what item stack should be present in a specific slot.
