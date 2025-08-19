@@ -4,14 +4,14 @@ go 1.24.1
 
 require (
 	github.com/cooldogedev/spectrum v0.0.40
-	github.com/df-mc/dragonfly v0.10.4
+	github.com/df-mc/dragonfly v0.10.6-0.20250817203556-60bcf6b7432b
 	github.com/df-mc/worldupgrader v1.0.19
 	github.com/go-gl/mathgl v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/rogpeppe/go-internal v1.12.0
 	github.com/samber/lo v1.38.1
 	github.com/sandertv/go-raknet v1.14.3-0.20250525005230-991ee492a907
-	github.com/sandertv/gophertunnel v1.48.1
+	github.com/sandertv/gophertunnel v1.49.0
 	github.com/segmentio/fasthash v1.0.3
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
 	golang.org/x/image v0.21.0
@@ -44,4 +44,4 @@ require (
 
 replace github.com/sandertv/go-raknet => github.com/tedacmc/tedac-raknet v0.0.6
 
-replace github.com/sandertv/gophertunnel => github.com/tedacmc/tedac-gophertunnel v0.0.45
+replace github.com/sandertv/gophertunnel => github.com/tedacmc/tedac-gophertunnel v0.0.46

@@ -458,6 +458,13 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 				WindowID:   pk.WindowID,
 				ServerSide: pk.ServerSide,
 			}
+		case *packet.CorrectPlayerMovePrediction:
+			result[i] = &legacypacket.CorrectPlayerMovePrediction{
+				Position: pk.Position,
+				Delta:    pk.Delta,
+				OnGround: pk.OnGround,
+				Tick:     pk.Tick,
+			}
 		case *packet.CraftingData:
 			recipes := make([]legacyprotocol.Recipe, 0, len(pk.Recipes))
 			for _, recipe := range pk.Recipes {

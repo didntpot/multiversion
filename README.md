@@ -2,7 +2,7 @@
 a gophertunnel library for use with dragonfly or alongside spectrum.
 
 ### working versions
-- latest (1.21.90)
+- latest (1.21.100)
 - 1.18.12 (`v486`)
 
 ### soon to come
