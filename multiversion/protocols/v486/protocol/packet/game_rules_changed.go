@@ -17,5 +17,5 @@ func (*GameRulesChanged) ID() uint32 {
 
 // Marshal ...
 func (pk *GameRulesChanged) Marshal(io protocol.IO) {
-	protocol.FuncSlice(io, &pk.GameRules, io.GameRule)
+	protocol.FuncSlice(io, &pk.GameRules, io.GameRuleLegacy)
 }
