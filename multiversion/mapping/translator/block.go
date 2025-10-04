@@ -14,6 +14,7 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
+// BlockTranslator ...
 type BlockTranslator interface {
 	// DowngradeBlockPackets downgrades the input block packets to legacy block packets.
 	DowngradeBlockPackets([]packet.Packet, *minecraft.Conn) (result []packet.Packet)
@@ -21,16 +22,26 @@ type BlockTranslator interface {
 	UpgradeBlockPackets([]packet.Packet, *minecraft.Conn) (result []packet.Packet)
 }
 
+// DefaultBlockTranslator ...
 type DefaultBlockTranslator struct {
-	mapping   mapping.Block
-	latest    mapping.Block
-	pse       chunk.Encoding
-	pe        chunk.PaletteEncoding
-	oldFormat bool
+	mapping                   mapping.Block
+	latest                    mapping.Block
+	pse                       chunk.Encoding
+	pe                        chunk.PaletteEncoding
+	oldFormat, preHashBlockID bool
 }
 
-func NewBlockTranslator(mapping mapping.Block, latestMapping mapping.Block, pse chunk.Encoding, pe chunk.PaletteEncoding, oldFormat bool) *DefaultBlockTranslator {
-	return &DefaultBlockTranslator{mapping: mapping, latest: latestMapping, pse: pse, pe: pe, oldFormat: oldFormat}
+// NewBlockTranslator ...
+func NewBlockTranslator(
+	mapping mapping.Block, latestMapping mapping.Block,
+	pse chunk.Encoding, pe chunk.PaletteEncoding,
+	oldChunkFormat bool, preHashedBlockID bool,
+) *DefaultBlockTranslator {
+	return &DefaultBlockTranslator{
+		mapping: mapping, latest: latestMapping,
+		pse: pse, pe: pe,
+		oldFormat: oldChunkFormat, preHashBlockID: preHashedBlockID,
+	}
 }
 
 func (t *DefaultBlockTranslator) DowngradeBlockPackets(pks []packet.Packet, conn *minecraft.Conn) (result []packet.Packet) {
@@ -215,7 +226,7 @@ func (t *DefaultBlockTranslator) DowngradeBlockPackets(pks []packet.Packet, conn
 	return result
 }
 
-func (t *DefaultBlockTranslator) UpgradeBlockPackets(pks []packet.Packet, conn *minecraft.Conn) (result []packet.Packet) {
+func (t *DefaultBlockTranslator) UpgradeBlockPackets(pks []packet.Packet, _ *minecraft.Conn) (result []packet.Packet) {
 	for _, pk := range pks {
 		switch pk := pk.(type) {
 		case *packet.InventoryTransaction:
@@ -237,11 +248,21 @@ func (t *DefaultBlockTranslator) DowngradeBlockRuntimeID(input uint32) uint32 {
 	}
 	state, ok := t.latest.RuntimeIDToState(input)
 	if !ok {
-		return t.mapping.Air()
+		rid, found := t.latest.HashToRuntimeID(input)
+		if !found {
+			return t.mapping.UnknownBlock()
+		}
+		if !t.preHashBlockID {
+			return input
+		}
+		state, ok = t.latest.RuntimeIDToState(rid)
+		if !ok {
+			return t.mapping.UnknownBlock()
+		}
 	}
 	runtimeID, ok := t.mapping.StateToRuntimeID(state)
 	if !ok {
-		return t.mapping.Air()
+		return t.mapping.UnknownBlock()
 	}
 	return runtimeID
 }

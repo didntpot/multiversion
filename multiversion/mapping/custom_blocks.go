@@ -63,7 +63,7 @@ func generateCombinationsRecursively[K comparable, V any](all map[K][]V, iterato
 
 		for _, value := range set {
 			current[key] = value
-			generateCombinationsRecursively(all, iterator, current, output)
+			generateCombinationsRecursively[K, V](all, iterator, current, output)
 			delete(current, key)
 		}
 

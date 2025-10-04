@@ -46,7 +46,7 @@ func New(direct bool) *Protocol {
 			blockMapping, latestBlockMapping,
 			chunk.NewNetworkPersistentEncoding(blockMapping, BlockVersion),
 			chunk.NewBlockPaletteEncoding(blockMapping, BlockVersion),
-			false,
+			false, true,
 		),
 
 		internal: internal,
