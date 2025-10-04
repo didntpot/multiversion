@@ -592,6 +592,10 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 				EmoteID:         pk.EmoteID,
 				Flags:           pk.Flags,
 			}
+		case *packet.GameRulesChanged:
+			result[i] = &legacypacket.GameRulesChanged{
+				GameRules: pk.GameRules,
+			}
 		case *packet.InventoryContent:
 			result[i] = &legacypacket.InventoryContent{
 				WindowID: pk.WindowID,
@@ -676,13 +680,24 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 				Radius:   pk.Radius,
 			}
 		case *packet.PlayerArmourDamage:
-			result[i] = &legacypacket.PlayerArmourDamage{
-				Bitset:           pk.Bitset,
-				HelmetDamage:     pk.HelmetDamage,
-				ChestplateDamage: pk.ChestplateDamage,
-				LeggingsDamage:   pk.LeggingsDamage,
-				BootsDamage:      pk.BootsDamage,
-			}
+			pkt := lo.Reduce(pk.List, func(entry legacypacket.PlayerArmourDamage, l protocol.PlayerArmourDamageEntry, _ int) legacypacket.PlayerArmourDamage {
+				switch l.ArmourSlot {
+				case 0:
+					entry.Bitset |= 0x01
+					entry.HelmetDamage = int32(l.Damage)
+				case 1:
+					entry.Bitset |= 0x02
+					entry.ChestplateDamage = int32(l.Damage)
+				case 2:
+					entry.Bitset |= 0x04
+					entry.LeggingsDamage = int32(l.Damage)
+				case 3:
+					entry.Bitset |= 0x08
+					entry.BootsDamage = int32(l.Damage)
+				}
+				return entry
+			}, legacypacket.PlayerArmourDamage{})
+			result[i] = &pkt
 		case *packet.PlayerList:
 			result[i] = &legacypacket.PlayerList{
 				ActionType: pk.ActionType,
