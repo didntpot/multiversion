@@ -486,6 +486,9 @@ func (t *DefaultItemTranslator) DowngradeItemPackets(pks []packet.Packet, _ *min
 					if entry.Name, ok = t.mapping.ItemRuntimeIDToName(itemType.NetworkID); !ok {
 						panic(itemType)
 					}
+				} else {
+					t.latest.RegisterFullEntry(entry.Name, int32(entry.RuntimeID))
+					entry.RuntimeID = int16(t.mapping.RegisterEntry(entry.Name))
 				}
 				pk.Items[i] = entry
 				for rid, i := range t.CustomItems() {
