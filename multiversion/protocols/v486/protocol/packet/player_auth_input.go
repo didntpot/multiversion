@@ -4,7 +4,6 @@ import (
 	legacyprotocol "github.com/didntpot/multiversion/multiversion/protocols/v486/protocol"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 const (
@@ -66,6 +65,18 @@ const (
 	InputFlagStartSpinAttack
 	InputFlagStopSpinAttack
 )
+const (
+	PlayModeNormal = iota
+	PlayModeTeaser
+	PlayModeScreen
+	PlayModeViewer
+	PlayModeReality
+	PlayModePlacement
+	PlayModeLivingRoom
+	PlayModeExitLevel
+	PlayModeExitLevelLivingRoom
+	PlayModeNumModes
+)
 
 // PlayerAuthInput is sent by the client to allow for server authoritative movement. It is used to synchronise
 // the player input with the position server-side.
@@ -102,7 +113,7 @@ func (pk *PlayerAuthInput) Marshal(io protocol.IO) {
 	io.Varuint64(&pk.InputData)
 	io.Varuint32(&pk.InputMode)
 	io.Varuint32(&pk.PlayMode)
-	if pk.PlayMode == packet.PlayModeReality {
+	if pk.PlayMode == PlayModeReality {
 		io.Vec3(&pk.GazeDirection)
 	}
 	io.Varuint64(&pk.Tick)
