@@ -85,6 +85,7 @@ func (Protocol) Packets(bool) packet.Pool {
 		pool[k] = v
 	}
 	packetMap := map[uint32]packet.Packet{
+		packet.IDAnimate:              &legacypacket.Animate{},
 		packet.IDChangeDimension:      &legacypacket.ChangeDimension{},
 		packet.IDCommandRequest:       &legacypacket.CommandRequest{},
 		packet.IDContainerClose:       &legacypacket.ContainerClose{},
@@ -118,6 +119,12 @@ func (Protocol) Packets(bool) packet.Pool {
 func (p Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []packet.Packet {
 	var newPks []packet.Packet
 	switch pk := pk.(type) {
+	case *legacypacket.Animate:
+		newPks = append(newPks, &packet.Animate{
+			ActionType:      pk.ActionType,
+			EntityRuntimeID: pk.EntityRuntimeID,
+			RowingTime:      pk.BoatRowingTime,
+		})
 	case *packet.ClientCacheStatus:
 		pk.Enabled = false
 		newPks = append(newPks, pk)
@@ -297,7 +304,7 @@ func (p Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []pack
 	case *legacypacket.RequestChunkRadius:
 		newPks = append(newPks, &packet.RequestChunkRadius{
 			ChunkRadius:    pk.ChunkRadius,
-			MaxChunkRadius: pk.ChunkRadius,
+			MaxChunkRadius: uint8(pk.ChunkRadius),
 		})
 	case *legacypacket.Text:
 		newPks = append(newPks, &packet.Text{
@@ -372,11 +379,17 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 			}
 		case *packet.AddVolumeEntity:
 			result[i] = &legacypacket.AddVolumeEntity{
-				EntityRuntimeID:    pk.EntityRuntimeID,
+				EntityRuntimeID:    uint64(pk.EntityRuntimeID),
 				EntityMetadata:     pk.EntityMetadata,
 				EncodingIdentifier: pk.EncodingIdentifier,
 				InstanceIdentifier: pk.InstanceIdentifier,
 				EngineVersion:      pk.EngineVersion,
+			}
+		case *packet.Animate:
+			result[i] = &legacypacket.Animate{
+				ActionType:      pk.ActionType,
+				EntityRuntimeID: pk.EntityRuntimeID,
+				BoatRowingTime:  pk.RowingTime,
 			}
 		case *packet.AvailableActorIdentifiers:
 			result[i] = &packet.AvailableActorIdentifiers{
@@ -714,7 +727,7 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 			}
 		case *packet.RemoveVolumeEntity:
 			result[i] = &legacypacket.RemoveVolumeEntity{
-				EntityRuntimeID: pk.EntityRuntimeID,
+				EntityRuntimeID: uint64(pk.EntityRuntimeID),
 			}
 		case *packet.ResourcePackStack:
 			result[i] = &legacypacket.ResourcePackStack{
@@ -765,6 +778,10 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 				RemainDuration:  pk.RemainDuration,
 				FadeOutDuration: pk.FadeOutDuration,
 			}
+		case *packet.ShowStoreOffer:
+			result[i] = &legacypacket.ShowStoreOffer{
+				OfferID: pk.OfferID.String(),
+			}
 		case *packet.SpawnParticleEffect:
 			result[i] = &legacypacket.SpawnParticleEffect{
 				Dimension:      pk.Dimension,
@@ -773,7 +790,6 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 				ParticleName:   pk.ParticleName,
 			}
 		case *packet.StartGame:
-			_, enabled := pk.ForceExperimentalGameplay.Value()
 			result[i] = &legacypacket.StartGame{
 				EntityUniqueID:                 pk.EntityUniqueID,
 				EntityRuntimeID:                pk.EntityRuntimeID,
@@ -822,7 +838,7 @@ func (p Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) (res
 				LimitedWorldDepth:              pk.LimitedWorldDepth,
 				NewNether:                      pk.NewNether,
 				EducationSharedResourceURI:     pk.EducationSharedResourceURI,
-				ForceExperimentalGameplay:      enabled,
+				ForceExperimentalGameplay:      pk.ForceExperimentalGameplay,
 				LevelID:                        pk.LevelID,
 				WorldName:                      pk.WorldName,
 				TemplateContentIdentity:        pk.TemplateContentIdentity,

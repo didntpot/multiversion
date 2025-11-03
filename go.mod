@@ -4,14 +4,14 @@ go 1.24.1
 
 require (
 	github.com/cooldogedev/spectrum v0.0.40
-	github.com/df-mc/dragonfly v0.10.8
+	github.com/df-mc/dragonfly v0.10.9
 	github.com/df-mc/worldupgrader v1.0.20
 	github.com/go-gl/mathgl v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/rogpeppe/go-internal v1.12.0
 	github.com/samber/lo v1.38.1
 	github.com/sandertv/go-raknet v1.14.3-0.20250525005230-991ee492a907
-	github.com/sandertv/gophertunnel v1.50.1
+	github.com/sandertv/gophertunnel v1.51.0
 	github.com/segmentio/fasthash v1.0.3
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
 	golang.org/x/image v0.21.0
@@ -28,7 +28,7 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.1 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/onsi/gomega v1.36.3 // indirect
 	github.com/quic-go/quic-go v0.53.0 // indirect
 	github.com/scylladb/go-set v1.0.2 // indirect
@@ -44,4 +44,4 @@ require (
 
 replace github.com/sandertv/go-raknet => github.com/tedacmc/tedac-raknet v0.0.6
 
-replace github.com/sandertv/gophertunnel => github.com/tedacmc/tedac-gophertunnel v0.0.49
+replace github.com/sandertv/gophertunnel => github.com/tedacmc/tedac-gophertunnel v0.0.50

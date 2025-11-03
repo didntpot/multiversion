@@ -6,7 +6,6 @@ import (
 
 	"github.com/df-mc/worldupgrader/blockupgrader"
 	"github.com/didntpot/multiversion/multiversion/internal"
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/segmentio/fasthash/fnv1"
@@ -61,7 +60,6 @@ func NewBlockMapping(raw []byte) *DefaultBlockMapping {
 	var airRID *uint32
 	var unknownBlockRID *uint32
 
-	minecraft.DefaultProtocol.ID()
 	var s blockupgrader.BlockState
 	for {
 		if err := dec.Decode(&s); err != nil {
