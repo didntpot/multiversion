@@ -469,37 +469,6 @@ func (t *DefaultItemTranslator) DowngradeItemPackets(pks []packet.Packet, _ *min
 				})
 				pk.EventData = (itemType.NetworkID << 16) | int32(itemType.MetadataValue)
 			}
-		case *packet.StartGame:
-			for i, entry := range pk.Items {
-				if !entry.ComponentBased {
-					itemType := t.DowngradeItemType(protocol.ItemType{
-						NetworkID:     int32(entry.RuntimeID),
-						MetadataValue: 0,
-					})
-					if itemType.NetworkID == t.mapping.Air() {
-						removeIndex(pk.Items, i)
-						continue
-					}
-					entry.RuntimeID = int16(itemType.NetworkID)
-
-					var ok bool
-					if entry.Name, ok = t.mapping.ItemRuntimeIDToName(itemType.NetworkID); !ok {
-						panic(itemType)
-					}
-				} else {
-					t.latest.RegisterEntry(entry.Name)
-					entry.RuntimeID = int16(t.mapping.RegisterEntry(entry.Name))
-				}
-				pk.Items[i] = entry
-			}
-			for rid, i := range t.CustomItems() {
-				name, _ := i.EncodeItem()
-				pk.Items = append(pk.Items, protocol.ItemEntry{
-					Name:           name,
-					RuntimeID:      int16(rid),
-					ComponentBased: true,
-				})
-			}
 		case *packet.ItemRegistry:
 			continue
 		}
@@ -682,33 +651,6 @@ func (t *DefaultItemTranslator) UpgradeItemPackets(pks []packet.Packet, _ *minec
 					MetadataValue: uint32(pk.EventData & 0xf),
 				})
 				pk.EventData = (itemType.NetworkID << 16) | int32(itemType.MetadataValue)
-			}
-		case *packet.StartGame:
-			for i, entry := range pk.Items {
-				if !entry.ComponentBased {
-					itemType := t.UpgradeItemType(protocol.ItemType{
-						NetworkID:     int32(entry.RuntimeID),
-						MetadataValue: 0,
-					})
-					entry.RuntimeID = int16(itemType.NetworkID)
-
-					var ok bool
-					if entry.Name, ok = t.latest.ItemRuntimeIDToName(itemType.NetworkID); !ok {
-						panic(itemType)
-					}
-				} else {
-					t.latest.RegisterEntry(entry.Name)
-					entry.RuntimeID = int16(t.mapping.RegisterEntry(entry.Name))
-				}
-				pk.Items[i] = entry
-			}
-			for rid, i := range t.CustomItems() {
-				name, _ := i.EncodeItem()
-				pk.Items = append(pk.Items, protocol.ItemEntry{
-					Name:           name,
-					RuntimeID:      int16(rid),
-					ComponentBased: true,
-				})
 			}
 		}
 		result = append(result, pk)
