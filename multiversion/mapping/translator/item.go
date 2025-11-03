@@ -470,7 +470,33 @@ func (t *DefaultItemTranslator) DowngradeItemPackets(pks []packet.Packet, _ *min
 				pk.EventData = (itemType.NetworkID << 16) | int32(itemType.MetadataValue)
 			}
 		case *packet.ItemRegistry:
-			continue
+			for i, entry := range pk.Items {
+				if !entry.ComponentBased {
+					itemType := t.DowngradeItemType(protocol.ItemType{
+						NetworkID:     int32(entry.RuntimeID),
+						MetadataValue: 0,
+					})
+					if itemType.NetworkID == t.mapping.Air() {
+						removeIndex(pk.Items, i)
+						continue
+					}
+					entry.RuntimeID = int16(itemType.NetworkID)
+
+					var ok bool
+					if entry.Name, ok = t.mapping.ItemRuntimeIDToName(itemType.NetworkID); !ok {
+						panic(itemType)
+					}
+				}
+				pk.Items[i] = entry
+				for rid, i := range t.CustomItems() {
+					name, _ := i.EncodeItem()
+					pk.Items = append(pk.Items, protocol.ItemEntry{
+						Name:           name,
+						RuntimeID:      int16(rid),
+						ComponentBased: true,
+					})
+				}
+			}
 		}
 		result = append(result, pk)
 	}
