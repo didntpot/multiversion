@@ -3,8 +3,8 @@ package v486
 import (
 	"bytes"
 
-	"github.com/didntpot/multiversion/multiversion/internal/chunk"
 	"github.com/didntpot/multiversion/multiversion/mapping"
+	"github.com/didntpot/multiversion/multiversion/mapping/chunk"
 	"github.com/didntpot/multiversion/multiversion/mapping/translator"
 	"github.com/didntpot/multiversion/multiversion/protocols/latest"
 	legacyprotocol "github.com/didntpot/multiversion/multiversion/protocols/v486/protocol"

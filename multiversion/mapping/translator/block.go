@@ -5,8 +5,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/didntpot/multiversion/multiversion/internal/chunk"
 	"github.com/didntpot/multiversion/multiversion/mapping"
+	"github.com/didntpot/multiversion/multiversion/mapping/chunk"
 	"github.com/didntpot/multiversion/multiversion/protocols/latest"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"

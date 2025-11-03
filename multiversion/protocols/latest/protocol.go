@@ -1,8 +1,8 @@
 package latest
 
 import (
-	"github.com/didntpot/multiversion/multiversion/internal/chunk"
 	"github.com/didntpot/multiversion/multiversion/mapping"
+	"github.com/didntpot/multiversion/multiversion/mapping/chunk"
 )
 
 var (
